@@ -1,3 +1,109 @@
+-- Create DB Schema
+DROP TABLE IF EXISTS list_albums;
+DROP TABLE IF EXISTS album_genres;
+DROP TABLE IF EXISTS album_artists;
+DROP TABLE IF EXISTS user_follows;
+DROP TABLE IF EXISTS logs;
+DROP TABLE IF EXISTS lists;
+DROP TABLE IF EXISTS genres;
+DROP TABLE IF EXISTS albums;
+DROP TABLE IF EXISTS artists;
+DROP TABLE IF EXISTS users;
+
+-- Create Users Table
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    user_bio TEXT,
+    join_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Artists Table
+CREATE TABLE artists (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    artist_bio TEXT
+);
+
+-- Create Albums Table
+CREATE TABLE albums (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(200) NOT NULL,
+    release_year INT,
+    cover_image VARCHAR(500)
+);
+
+-- Create Genres Table
+CREATE TABLE genres (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Create Lists Table
+CREATE TABLE lists (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_public BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Create Logs Table
+CREATE TABLE logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    album_id INT NOT NULL,
+    rating INT CHECK (rating >= 1 AND rating <= 5),
+    review TEXT,
+    listened_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_relistened BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE
+);
+
+-- Create User Follows Junction Table (M:N)
+CREATE TABLE user_follows (
+    follower_id INT,
+    following_id INT,
+    follow_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (follower_id, following_id),
+    FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
+    CHECK (follower_id != following_id)
+);
+
+-- Create Album-Artists Junction Table (M:N)
+CREATE TABLE album_artists (
+    album_id INT,
+    artist_id INT,
+    PRIMARY KEY (album_id, artist_id),
+    FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE
+);
+
+-- Create Album-Genres Junction Table (M:N)
+CREATE TABLE album_genres (
+    album_id INT,
+    genre_id INT,
+    PRIMARY KEY (album_id, genre_id),
+    FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE,
+    FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
+);
+
+-- Create List-Albums Junction Table (M:N)
+CREATE TABLE list_albums (
+    list_id INT,
+    album_id INT,
+    position INT,
+    PRIMARY KEY (list_id, album_id),
+    FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE CASCADE,
+    FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE
+);
+
 --------- INSERT ALBUMS ---------
 INSERT INTO albums (title, release_year, cover_image) VALUES
  ('The Velvet Underground & Nico', 1967, 'albumCovers/vu_nico.jpg'),
@@ -448,3 +554,295 @@ INSERT INTO list_albums (list_id, album_id, position) VALUES
 (20, 1, 2),
 (20, 22, 3);
 
+-- 1. Browse albums (albums, artist info)
+SELECT a.id, a.title, a.release_year, ar.name AS artist_name
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+ORDER BY a.release_year DESC
+LIMIT 20;
+
+-- 2. Album details w/ ratings
+SELECT a.title AS album_title, ar.name AS artist_name, a.release_year,
+       AVG(l.rating) AS avg_rating, COUNT(l.id) AS total_reviews
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+LEFT JOIN logs l ON a.id = l.album_id
+WHERE a.id = 7
+GROUP BY a.id, a.title, ar.name, a.release_year;
+
+-- 3. Log listening history (user's listening logs)
+SELECT u.username, a.title AS album_title, ar.name AS artist, 
+       l.rating, l.listened_date
+FROM logs l
+JOIN users u ON l.user_id = u.id
+JOIN albums a ON l.album_id = a.id
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+WHERE u.id = 1
+ORDER BY l.listened_date DESC;
+
+-- 4. Rate albums (top-rated albums)
+SELECT a.title, ar.name AS artist, AVG(l.rating) AS avg_rating, 
+       COUNT(l.id) AS num_ratings
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+JOIN logs l ON a.id = l.album_id
+GROUP BY a.id, a.title, ar.name
+HAVING AVG(l.rating) >= 4.5
+ORDER BY avg_rating DESC, num_ratings DESC;
+
+-- 5. Review albums (recent reviews)
+SELECT u.username, a.title AS album_title, l.rating, 
+       l.review, l.listened_date
+FROM logs l
+JOIN users u ON l.user_id = u.id
+JOIN albums a ON l.album_id = a.id
+WHERE l.review IS NOT NULL
+ORDER BY l.listened_date DESC
+LIMIT 15;
+
+-- 6. Search music (album title)
+SELECT a.title, ar.name AS artist_name, a.release_year
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+WHERE a.title LIKE '%rainbow%'
+ORDER BY a.release_year DESC;
+
+-- 7. Search music (artist name)
+SELECT ar.name AS artist_name, a.title AS album_title, a.release_year
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+WHERE ar.name LIKE '%radio%'
+ORDER BY a.release_year;
+
+-- 8 Search users (username)
+SELECT username, email, user_bio, join_date
+FROM users
+WHERE username LIKE '%liz%';
+
+-- 9 Follow users (get user's followers)
+SELECT u.username AS follower, uf.follow_date
+FROM user_follows uf
+JOIN users u ON uf.follower_id = u.id
+WHERE uf.following_id = 1
+ORDER BY uf.follow_date DESC;
+
+-- 10. Follow users (get who user is following)
+SELECT u.username AS following, uf.follow_date
+FROM user_follows uf
+JOIN users u ON uf.following_id = u.id
+WHERE uf.follower_id = 1
+ORDER BY uf.follow_date DESC;
+
+-- 11. Create lists (view user's lists)
+SELECT l.id, l.name, l.is_public, l.created_date,
+       COUNT(la.album_id) AS album_count
+FROM lists l
+LEFT JOIN list_albums la ON l.id = la.list_id
+WHERE l.user_id = 1
+GROUP BY l.id, l.name, l.is_public, l.created_date
+ORDER BY l.created_date DESC;
+
+-- 12. View albums in a specific list
+SELECT l.name AS list_name, a.title AS album_title, 
+       ar.name AS artist_name, la.position
+FROM list_albums la
+JOIN lists l ON la.list_id = l.id
+JOIN albums a ON la.album_id = a.id
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+WHERE l.id = 7
+ORDER BY la.position;
+
+-- 13. Browse public lists
+SELECT u.username, l.name AS list_name, l.created_date,
+       COUNT(la.album_id) AS album_count
+FROM lists l
+JOIN users u ON l.user_id = u.id
+LEFT JOIN list_albums la ON l.id = la.list_id
+WHERE l.is_public = TRUE
+GROUP BY l.id, u.username, l.name, l.created_date
+ORDER BY l.created_date DESC
+LIMIT 10;
+
+-- 14. Find albums by genre
+SELECT a.title, ar.name AS artist, a.release_year, g.name AS genre
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+JOIN album_genres ag ON a.id = ag.album_id
+JOIN genres g ON ag.genre_id = g.id
+WHERE g.name = 'Indie Rock'
+ORDER BY a.release_year DESC;
+
+-- 15. Most active users (most logs)
+SELECT u.username, COUNT(l.id) AS total_logs,
+       AVG(l.rating) AS avg_rating_given
+FROM users u
+JOIN logs l ON u.id = l.user_id
+GROUP BY u.id, u.username
+ORDER BY total_logs DESC
+LIMIT 10;
+
+-- 16. Most popular albums (most logged)
+SELECT a.title, ar.name AS artist, 
+       COUNT(l.id) AS times_logged,
+       AVG(l.rating) AS avg_rating
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+LEFT JOIN logs l ON a.id = l.album_id
+GROUP BY a.id, a.title, ar.name
+ORDER BY times_logged DESC
+LIMIT 10;
+
+-- 17. Albums released in specific year range
+SELECT a.title, ar.name AS artist, a.release_year
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+WHERE a.release_year BETWEEN 1995 AND 2005
+ORDER BY a.release_year;
+
+-- 18. User activity feed (following users' recent logs)
+SELECT u.username AS logged_by, a.title AS album_title, 
+       l.rating, l.review, l.listened_date
+FROM user_follows uf
+JOIN logs l ON uf.following_id = l.user_id
+JOIN users u ON l.user_id = u.id
+JOIN albums a ON l.album_id = a.id
+WHERE uf.follower_id = 1
+ORDER BY l.listened_date DESC
+LIMIT 20;
+
+-- 19. Albums with multiple genres
+SELECT a.title, ar.name AS artist,
+       GROUP_CONCAT(g.name SEPARATOR ', ') AS genres
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+JOIN album_genres ag ON a.id = ag.album_id
+JOIN genres g ON ag.genre_id = g.id
+GROUP BY a.id, a.title, ar.name
+HAVING COUNT(g.id) > 1
+ORDER BY COUNT(g.id) DESC;
+
+-- 20. Find users who haven't logged any albums
+SELECT u.username, u.email, u.join_date
+FROM users u
+LEFT JOIN logs l ON u.id = l.user_id
+WHERE l.id IS NULL;
+
+-- QUERY 21: Albums by specific artist
+SELECT a.title, a.release_year, 
+       AVG(l.rating) AS avg_rating,
+       COUNT(l.id) AS review_count
+FROM albums a
+JOIN album_artists aa ON a.id = aa.album_id
+JOIN artists ar ON aa.artist_id = ar.id
+LEFT JOIN logs l ON a.id = l.album_id
+WHERE ar.name = 'Radiohead'
+GROUP BY a.id, a.title, a.release_year
+ORDER BY a.release_year;
+
+-- QUERY 22: Genre statistics
+SELECT g.name AS genre, 
+       COUNT(DISTINCT ag.album_id) AS num_albums,
+       AVG(l.rating) AS avg_rating
+FROM genres g
+JOIN album_genres ag ON g.id = ag.genre_id
+LEFT JOIN logs l ON ag.album_id = l.album_id
+GROUP BY g.id, g.name
+ORDER BY num_albums DESC;
+
+-- ============================================
+-- DATA MODIFICATION STATEMENTS
+-- ============================================
+
+-- INSERT 1: User logs a new album
+INSERT INTO logs (user_id, album_id, rating, review, listened_date)
+VALUES (1, 26, 5, 'the smiths never miss honestly', NOW());
+
+-- INSERT 2: User creates a new list
+INSERT INTO lists (user_id, name, is_public)
+VALUES (1, 'albums that changed my life', TRUE);
+
+-- INSERT 3: Add album to list
+INSERT INTO list_albums (list_id, album_id, position)
+VALUES (21, 29, 1);
+
+-- INSERT 4: User follows another user
+INSERT INTO user_follows (follower_id, following_id)
+VALUES (5, 7);
+
+-- INSERT 5: Add new artist
+INSERT INTO artists (name, artist_bio)
+VALUES ('Taylor Swift', 'Grammy-winning singer-songwriter known for narrative lyrics');
+
+-- INSERT 6: Add new album
+INSERT INTO albums (title, release_year, cover_image)
+VALUES ('folklore', 2020, 'albumCovers/folklore.jpg');
+
+-- INSERT 7: Link album to artist
+INSERT INTO album_artists (album_id, artist_id)
+VALUES (51, 62);
+
+-- INSERT 8: Add genre to album
+INSERT INTO album_genres (album_id, genre_id)
+VALUES (51, 17);
+
+-- UPDATE 1: Update user bio
+UPDATE users
+SET user_bio = 'indie enthusiast and concert photographer'
+WHERE id = 1;
+
+-- UPDATE 2: Change album rating
+UPDATE logs
+SET rating = 5
+WHERE id = 12;
+
+-- UPDATE 3: Update review text
+UPDATE logs
+SET review = 'this album gets better with every listen'
+WHERE id = 21;
+
+-- UPDATE 4: Make list private
+UPDATE lists
+SET is_public = FALSE
+WHERE id = 7;
+
+-- UPDATE 5: Change album release year
+UPDATE albums
+SET release_year = 2001
+WHERE id = 46;
+
+-- UPDATE 6: Update artist bio
+UPDATE artists
+SET artist_bio = 'English rock band formed in 1985 and known for their jangly guitar sound'
+WHERE id = 15;
+
+-- DELETE 1: Remove album from list
+DELETE FROM list_albums
+WHERE list_id = 5 AND album_id = 41;
+
+-- DELETE 2: User unfollows someone
+DELETE FROM user_follows
+WHERE follower_id = 1 AND following_id = 4;
+
+-- DELETE 3: Delete a review (keep log, remove review text)
+UPDATE logs
+SET review = NULL
+WHERE id = 28;
+
+-- DELETE 4: Remove a log entirely
+DELETE FROM logs
+WHERE id = 35;
+
+-- DELETE 5: Delete an entire list
+DELETE FROM lists
+WHERE id = 18;
