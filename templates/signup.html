@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Sign Up</h2>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form method="POST">
+    <input name="username" class="form-control" placeholder="Username" required>
+    <input name="email" type="email" class="form-control mt-2" placeholder="Email" required>
+    <input name="password" type="password" class="form-control mt-2" placeholder="Password" required>
+    <button class="btn btn-success mt-3">Create Account</button>
+</form>
+{% endblock %}

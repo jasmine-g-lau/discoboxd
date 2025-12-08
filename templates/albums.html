@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block content %}
+
+{% if search_term %}
+<h2 class="mb-3">Results for "{{ search_term }}"</h2>
+{% else %}
+<h2 class="mb-3">Albums</h2>
+{% endif %}
+
+<div class="row">
+    {% for album in albums %}
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm">
+            <a href="{{ url_for('album_detail', album_id=album['id']) }}">
+                <img src="{{ url_for('static', filename=album['cover_image']) }}"
+                     class="card-img-top"
+                     style="height:220px; object-fit:cover;">
+            </a>
+            <div class="p-2">
+                <strong>{{ album['title'] }}</strong><br>
+                <small class="text-muted">{{ album['release_year'] }}</small>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not albums %}
+<p>No albums found.</p>
+{% endif %}
+
+{% endblock %}

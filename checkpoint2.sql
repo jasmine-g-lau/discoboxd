@@ -190,9 +190,40 @@ INSERT INTO artists (name) VALUES
 ('Dusty Springfield'),
 ('The Zombies'),
 ('Love'),
+-- EXTRA 30 ARTISTS (similar genre)
+('The Beatles'),
+('The Kinks'),
+('The Who'),
+('Roxy Music'),
+('Talking Heads'),
+('Patti Smith'),
+('Sonic Youth'),
+('Arcade Fire'),
+('The Cure'),
+('The National'),
+('Wilco'),
+('Modest Mouse'),
+('Neutral Milk Hotel'),
+('Phoebe Bridgers'),
+('Big Thief'),
+('Sharon Van Etten'),
+('Mazzy Star'),
+('PJ Harvey'),
+('The Smashing Pumpkins'),
+('The Cranberries'),
+('Yo La Tengo'),
+('Built to Spill'),
+('Slowdive'),
+('My Bloody Valentine'),
+('Cocteau Twins'),
+('Interpol'),
+('The Strokes'),
+('Arctic Monkeys'),
+('Mitski'),
+('Angel Olsen');
 
 INSERT INTO artists (name) VALUES
-('John Cale'),
+('John Cale');
 
 -- EXTRA 30 ARTISTS (similar genre)
 ('The Beatles'),
@@ -848,3 +879,11 @@ WHERE id = 35;
 -- DELETE 5: Delete an entire list
 DELETE FROM lists
 WHERE id = 18;
+
+-- ADDING is_admin COLUMN TO USERS TABLE
+ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0;
+UPDATE users SET is_admin = 1 WHERE id = 1;
+UPDATE users SET is_admin = 2 WHERE id = 2;
+
+UPDATE album_artists
+SET artist_id = artist_id + 2;

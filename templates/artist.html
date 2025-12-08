@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<h2 class="page-title">Search Artists</h2>
+
+<form method="POST" class="mb-4">
+    <input type="text" class="form-control" name="term" placeholder="Artist name…" required>
+    <button class="btn btn-primary mt-2">Search</button>
+</form>
+
+{% if results %}
+<ul class="list-group">
+    {% for item in results %}
+    <li class="list-group-item">
+        <strong>{{ item[0] }}</strong> — {{ item[1] }} ({{ item[2] }})
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% endblock %}

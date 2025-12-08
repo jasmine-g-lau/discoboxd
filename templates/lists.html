@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📁 Public Lists</h2>
+
+        <form method="GET" action="{{ url_for('browse_lists') }}">
+            <select name="filter" class="form-select" onchange="this.form.submit()">
+
+                <option value="all" 
+                    {% if filter_mode == "all" %}selected{% endif %}>
+                    All Public Lists
+                </option>
+
+                {% if session.get("user_id") %}
+                <option value="following" 
+                    {% if filter_mode == "following" %}selected{% endif %}>
+                    Only People I Follow
+                </option>
+                {% endif %}
+
+            </select>
+        </form>
+    </div>
+
+    <hr>
+
+    {% if lists %}
+        <div class="list-group">
+
+        {% for lst in lists %}
+            <a href="{{ url_for('view_list', list_id=lst['id']) }}"
+               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+
+                <div>
+                    <strong>{{ lst['name'] }}</strong><br>
+                    <small class="text-muted">
+                        By {{ lst['username'] }} • {{ lst['album_count'] }} albums
+                    </small>
+                </div>
+
+                <span class="badge bg-success">Public</span>
+
+            </a>
+        {% endfor %}
+
+        </div>
+
+    {% else %}
+        <div class="alert alert-info mt-4">
+            No public lists found.
+        </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+    <h2>📁 {{ lst['name'] }}</h2>
+    <p class="text-muted">
+        By 
+        <a href="{{ url_for('user_profile', user_id=lst['user_id']) }}">
+            {{ lst['username'] }}
+        </a>
+    </p>
+
+    <hr>
+
+    {% if albums %}
+        <div class="row">
+            {% for album in albums %}
+            <div class="col-md-3 mb-4">
+                <div class="card shadow-sm">
+
+                    {% if album["cover_image"] %}
+                        <img src="{{ url_for('static', filename=album['cover_image']) }}" class="card-img-top">
+                    {% endif %}
+
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{{ url_for('album_detail', album_id=album['id']) }}">
+                                {{ album["title"] }}
+                            </a>
+                        </h5>
+
+                        <p class="text-muted">
+                            Position: {{ album["position"] }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            This list has no albums yet.
+        </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

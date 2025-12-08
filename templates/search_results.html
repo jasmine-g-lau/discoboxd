@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+    <h2 class="page-title mb-4">🔍 Results for "{{ search_term }}"</h2>
+
+    <h4 class="mb-3">🎵 Albums</h4>
+
+    {% if albums %}
+    <div class="row">
+        {% for a in albums %}
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm h-100">
+
+                {% if a["cover_image"] %}
+                <a href="{{ url_for('album_detail', album_id=a['id']) }}">
+                    <img src="{{ url_for('static', filename=a['cover_image']) }}"
+                         class="album-img">
+                </a>
+                {% endif %}
+
+                <div class="p-3 text-center">
+                    <h6>{{ a["title"] }}</h6>
+                    <p class="text-muted mb-0">{{ a["release_year"] }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p class="text-muted mb-4">No albums found.</p>
+    {% endif %}
+
+    <hr>
+
+    <h4 class="mb-3">👤 Users</h4>
+
+    {% if users %}
+        <div class="list-group">
+            {% for u in users %}
+                <a href="{{ url_for('user_profile', user_id=u['id']) }}"
+                   class="list-group-item list-group-item-action">
+
+                    <strong>{{ u["username"] }}</strong><br>
+
+                    {% if u["user_bio"] %}
+                        <small class="text-muted">{{ u["user_bio"] }}</small>
+                    {% else %}
+                        <small class="text-muted fst-italic">No bio</small>
+                    {% endif %}
+
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted">No users found.</p>
+    {% endif %}
+
+</div>
+
+{% endblock %}

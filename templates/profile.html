@@ -1,0 +1,139 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="mb-4">
+        <h3>👤 {{ user['username'] }}</h3>
+
+        {% if user['user_bio'] %}
+            <p class="text-muted">{{ user['user_bio'] }}</p>
+        {% else %}
+            <p class="text-muted fst-italic">No bio yet.</p>
+        {% endif %}
+
+        <button class="btn btn-sm btn-outline-secondary mt-2"
+                data-bs-toggle="modal"
+                data-bs-target="#bioModal">
+            ✏️ Edit Bio
+        </button>
+        <div class="d-flex gap-4 mb-3">
+            <a href="{{ url_for('followers', user_id=user['id']) }}"
+            class="text-decoration-none text-dark">
+                <strong>{{ follower_count }}</strong> Followers
+            </a>
+
+            <a href="{{ url_for('following', user_id=user['id']) }}"
+            class="text-decoration-none text-dark">
+                <strong>{{ following_count }}</strong> Following
+            </a>
+        </div>
+
+
+    </div>
+
+    <h3 class="mt-4 mb-3">🎧 My Listening History</h3>
+
+    {% if logs %}
+        {% for log in logs %}
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+
+                <h5 class="card-title">{{ log['title'] }}</h5>
+
+                {% if log['rating'] %}
+                    <p class="card-text">⭐ Rating: {{ log['rating'] }}/5</p>
+                {% else %}
+                    <p class="card-text fst-italic text-muted">Logged (no rating)</p>
+                {% endif %}
+
+                {% if log['review'] %}
+                    <p class="card-text fst-italic">
+                        “{{ log['review'] }}”
+                    </p>
+                {% endif %}
+
+                <p class="card-text">
+                    <small class="text-muted">
+                        {{ log['listened_date'] }}
+                    </small>
+                </p>
+
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            You haven't logged any albums yet.
+        </div>
+    {% endif %}
+
+    <hr>
+
+    <h3 class="mt-4 mb-3">📁 My Lists</h3>
+
+    {% if lists %}
+        <div class="list-group">
+
+        {% for lst in lists %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+
+                <div>
+                    <a href="{{ url_for('view_list', list_id=lst['id']) }}">
+                        <strong>{{ lst['name'] }}</strong>
+                    </a><br>
+                    <small class="text-muted">
+                        {{ lst['album_count'] }} albums
+                    </small>
+                </div>
+
+                <div>
+                    {% if lst['is_public'] %}
+                        <span class="badge bg-success">Public</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Private</span>
+                    {% endif %}
+                </div>
+
+            </div>
+        {% endfor %}
+
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            You haven't created any lists yet.
+        </div>
+    {% endif %}
+
+    <div class="modal fade" id="bioModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('update_bio') }}" class="modal-content">
+
+        <div class="modal-header">
+            <h5 class="modal-title">Edit Bio</h5>
+        </div>
+
+        <div class="modal-body">
+            <textarea name="user_bio"
+                    class="form-control"
+                    rows="4"
+                    placeholder="Write something about yourself...">{{ user['user_bio'] }}</textarea>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal">
+                Cancel
+            </button>
+            <button class="btn btn-primary">Save</button>
+        </div>
+
+        </form>
+    </div>
+    </div>
+
+
+</div>
+
+{% endblock %}

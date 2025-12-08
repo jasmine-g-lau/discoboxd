@@ -1,0 +1,175 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="row">
+    <div class="col-md-4">
+        <img src="{{ url_for('static', filename=album['cover_image']) }}" class="img-fluid rounded">
+    </div>
+
+    <div class="col-md-8">
+
+        <h2>{{ album['title'] }}</h2>
+        <p><strong>Artist:</strong> {{ artist }}</p>
+        <p><strong>Genres:</strong> {{ genres }}</p>
+
+        <h4>
+            {% if avg_rating %}
+                ⭐ {{ avg_rating }}
+            {% else %}
+                No ratings yet
+            {% endif %}
+        </h4>
+
+        {% if session.get("user_id") %}
+            <button class="btn btn-outline-secondary mt-3"
+                    data-bs-toggle="modal"
+                    data-bs-target="#logModal">
+                ✅ Log
+            </button>
+            <button class="btn btn-outline-primary mt-3 ms-2"
+                    data-bs-toggle="modal"
+                    data-bs-target="#rateModal">
+                ⭐ Rate
+            </button>
+            <button class="btn btn-outline-success mt-3 ms-2"
+                    data-bs-toggle="modal"
+                    data-bs-target="#listModal">
+                📁 Add to List
+            </button>
+        {% endif %}
+
+        <hr>
+
+        <h4>Reviews</h4>
+        {% for r in reviews %}
+            <div class="border p-2 mb-2">
+                <a href="{{ url_for('user_profile', user_id=r['user_id']) }}" class="fw-bold">
+                    {{ r['username'] }}
+                </a>
+                rated ⭐ {{ r['rating'] }}<br>
+
+                <em>{{ r['review'] }}</em><br>
+                <small>{{ r['listened_date'] }}</small>
+
+            </div>
+        {% endfor %}
+    </div>
+</div>
+<div class="modal fade" id="logModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('log_album', album_id=album['id']) }}" class="modal-content">
+
+      <div class="modal-header">
+        <h5>🎧 Log Listening</h5>
+      </div>
+
+      <div class="modal-body">
+
+        <label>Optional Rating (1–5)</label>
+        <select name="rating" class="form-control">
+          <option value="">No rating</option>
+          <option>1</option>
+          <option>2</option>
+          <option>3</option>
+          <option>4</option>
+          <option>5</option>
+        </select>
+
+        <label class="mt-2">Optional Review</label>
+        <textarea name="review" class="form-control"></textarea>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary">Save to Log</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="rateModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST"
+          action="{{ url_for('submit_review', album_id=album['id']) }}"
+          class="modal-content">
+
+      <div class="modal-header">
+        <h5>⭐ Rate Album</h5>
+      </div>
+
+      <div class="modal-body">
+        <label>Rating (required)</label>
+        <select name="rating" class="form-control" required>
+          <option value="">Select</option>
+          <option>1</option><option>2</option>
+          <option>3</option><option>4</option><option>5</option>
+        </select>
+
+        <label class="mt-2">Optional Review</label>
+        <textarea name="review" class="form-control"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary">Submit Rating</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="listModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="POST"
+          action="{{ url_for('add_album_to_list', album_id=album['id']) }}"
+          class="modal-content">
+
+      <div class="modal-header">
+        <h5>📁 Add Album to a List</h5>
+      </div>
+
+      <div class="modal-body">
+
+        <h6>Select Existing List</h6>
+        {% for lst in user_lists %}
+            <div class="form-check">
+                <input class="form-check-input"
+                       type="radio"
+                       name="existing_list_id"
+                       value="{{ lst['id'] }}">
+                <label class="form-check-label">
+                    {{ lst['name'] }} ({{ lst['album_count'] }} albums)
+                </label>
+            </div>
+        {% endfor %}
+
+        <hr>
+
+        <h6>Create New List</h6>
+        <input name="list_name" class="form-control mb-2"
+               placeholder="New list name">
+        <textarea name="description" class="form-control mb-2"
+                  placeholder="Description"></textarea>
+
+        <div class="form-check mb-2">
+            <input class="form-check-input"
+                   type="checkbox"
+                   name="is_public"
+                   checked>
+            <label class="form-check-label">Public List</label>
+        </div>
+
+        <hr>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success">Save</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}

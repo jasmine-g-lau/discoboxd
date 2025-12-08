@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<h2 class="mb-4">📰 Your Feed</h2>
+
+{% if feed %}
+    {% for item in feed %}
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <strong>
+                    <a href="{{ url_for('user_profile', user_id=item['user_id']) }}"
+                       class="text-decoration-none">
+                        {{ item['username'] }}
+                    </a>
+                </strong>
+
+                {% if item['type'] == 'log' %}
+                    {% if item['rating'] %}
+                        <p class="mb-1">
+                            ⭐ Rated
+                            <a href="{{ url_for('album_detail', album_id=item['album_id']) }}">
+                                "{{ item['album_title'] }}"
+                            </a>
+                            by {{ item['artist'] }} ({{ item['rating'] }}/5)
+                        </p>
+
+                    {% elif item['review'] %}
+                        <p class="mb-1">
+                            ✍️ Reviewed
+                            <a href="{{ url_for('album_detail', album_id=item['album_id']) }}">
+                                "{{ item['album_title'] }}"
+                            </a>
+                            by {{ item['artist'] }}
+                        </p>
+
+                    {% else %}
+                        <p class="mb-1">
+                            🎧 Just listened to
+                            <a href="{{ url_for('album_detail', album_id=item['album_id']) }}">
+                                "{{ item['album_title'] }}"
+                            </a>
+                            by {{ item['artist'] }}!
+                        </p>
+                    {% endif %}
+
+                {% elif item['type'] == 'list_create' %}
+                    <p class="mb-1">
+                        📁 Created a new list:
+                        <a href="{{ url_for('view_list', list_id=item['list_id']) }}">
+                            "{{ item['list_name'] }}"
+                        </a>
+                    </p>
+
+                {% elif item['type'] == 'add_to_list' %}
+                    <p class="mb-1">
+                        ➕ Added
+                        <a href="{{ url_for('album_detail', album_id=item['album_id']) }}">
+                            "{{ item['album_title'] }}"
+                        </a>
+                        by {{ item['artist'] }}
+                        to the list
+                        <a href="{{ url_for('view_list', list_id=item['list_id']) }}">
+                            "{{ item['list_name'] }}"
+                        </a>
+                    </p>
+                {% endif %}
+
+                <small class="text-muted">{{ item['created_at'] }}</small>
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-info">
+        Your feed is empty. Follow users to see activity.
+    </div>
+{% endif %}
+
+{% endblock %}

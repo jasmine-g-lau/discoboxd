@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<h3 class="mb-4">Following</h3>
+
+{% for user in users %}
+    <div class="mb-2">
+        <a href="{{ url_for('user_profile', user_id=user['id']) }}">
+            {{ user['username'] }}
+        </a>
+    </div>
+{% else %}
+    <p class="text-muted">Not following anyone yet.</p>
+{% endfor %}
+
+{% endblock %}
