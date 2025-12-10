@@ -42,6 +42,12 @@
                 <a class="nav-link" href="{{ url_for('browse_lists') }}">Lists</a>
             </li>
 
+            {% if session.get('is_admin') == 1 or session.get('is_admin') == True %}
+            <li class="nav-item">
+                <a class="nav-link text-danger" href="{{ url_for('admin_dashboard') }}">Admin</a>
+            </li>
+            {% endif %}
+
             {% endif %}
 
         </ul>

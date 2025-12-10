@@ -19,6 +19,15 @@
             <div class="p-2">
                 <strong>{{ album['title'] }}</strong><br>
                 <small class="text-muted">{{ album['release_year'] }}</small>
+                {% if session.get('is_admin') %}
+                <div class="mt-2 admin-actions">
+                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin_edit_album', album_id=album['id']) }}">Edit</a>
+
+                    <form method="POST" action="{{ url_for('admin_delete_album', album_id=album['id']) }}" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete this album?');">
+                        <button class="btn btn-sm btn-admin-delete" type="submit">Delete</button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

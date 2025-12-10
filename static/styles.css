@@ -35,3 +35,51 @@ footer {
     text-align: center;
     color: #777;
 }
+
+/* Admin dashboard styles */
+.admin-dashboard h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+.admin-table {
+    width: 100%;
+}
+
+.admin-table th, .admin-table td {
+    vertical-align: middle;
+}
+
+.admin-actions form {
+    margin-left: 6px;
+}
+
+.admin-card {
+    padding: 16px;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.admin-note {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Highlight admin links/buttons */
+.nav-link.text-danger {
+    color: #ff6b6b !important;
+    font-weight: 600;
+}
+
+.btn-admin-delete {
+    background: linear-gradient(180deg,#d9534f,#c9302c);
+    border-color: #b52b23;
+    color: #fff;
+}
+
+.btn-admin-warning {
+    background: linear-gradient(180deg,#f0ad4e,#ec971f);
+    border-color: #d58512;
+    color: #fff;
+}

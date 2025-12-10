@@ -292,6 +292,8 @@ def signup():
 
                 session["user_id"] = user_id
                 session["username"] = username
+                # new users are not admin by default
+                session["is_admin"] = False
                 return redirect(url_for("albums"))
             except sqlite3.IntegrityError:
                 error = "Username or email already exists."
@@ -312,17 +314,32 @@ def login():
             conn = connect_db()
             cur = conn.cursor()
 
-            cur.execute("""
-                SELECT id, password_hash
-                FROM users
-                WHERE username = ?;
-            """, (username,))
+            # try to include is_admin column if it exists
+            try:
+                cur.execute("""
+                    SELECT id, password_hash, is_admin
+                    FROM users
+                    WHERE username = ?;
+                """, (username,))
+            except Exception:
+                cur.execute("""
+                    SELECT id, password_hash
+                    FROM users
+                    WHERE username = ?;
+                """, (username,))
+
             user = cur.fetchone()
             conn.close()
 
             if user and password == user["password_hash"]:
                 session["user_id"] = user["id"]
                 session["username"] = username
+                # set admin flag in session if available, otherwise default False
+                try:
+                    session["is_admin"] = bool(user["is_admin"])
+                except Exception:
+                    session["is_admin"] = False
+
                 return redirect(url_for("albums"))
             else:
                 error = "Invalid username or password."
@@ -797,6 +814,169 @@ def following(user_id):
     conn.close()
 
     return render_template("following_list.html", users=following)
+
+
+def admin_required():
+    if not session.get("is_admin"):
+        return False
+    return True
+
+
+@app.route('/admin')
+def admin_dashboard():
+    if not admin_required():
+        return redirect(url_for('albums'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id, title, release_year FROM albums ORDER BY title ASC;")
+    albums = cur.fetchall()
+
+    cur.execute("SELECT id, username, email FROM users ORDER BY username ASC;")
+    users = cur.fetchall()
+
+    conn.close()
+    return render_template('admin_dashboard.html', albums=albums, users=users)
+
+
+@app.route('/debug/session')
+def debug_session():
+    # Debug helper: returns current session keys and (if logged in) the DB is_admin value for the user
+    debug = {k: session.get(k) for k in session.keys()}
+    if session.get('user_id'):
+        conn = connect_db()
+        cur = conn.cursor()
+        try:
+            cur.execute('SELECT is_admin FROM users WHERE id = ?;', (session['user_id'],))
+            row = cur.fetchone()
+            debug['db_is_admin'] = bool(row['is_admin']) if row and 'is_admin' in row.keys() else None
+        except Exception:
+            debug['db_is_admin'] = None
+        conn.close()
+
+    return debug
+
+
+@app.route('/admin/album/<int:album_id>/edit', methods=['GET', 'POST'])
+def admin_edit_album(album_id):
+    if not admin_required():
+        return redirect(url_for('albums'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        release_year = request.form.get('release_year')
+        cover_image = request.form.get('cover_image', '').strip()
+
+        try:
+            if release_year == '':
+                release_year_val = None
+            else:
+                release_year_val = int(release_year)
+        except:
+            release_year_val = None
+
+        cur.execute("UPDATE albums SET title = ?, release_year = ?, cover_image = ? WHERE id = ?;",
+                    (title, release_year_val, cover_image if cover_image else None, album_id))
+        conn.commit()
+        conn.close()
+        session['success'] = '✅ Album updated.'
+        return redirect(url_for('admin_dashboard'))
+
+    cur.execute("SELECT * FROM albums WHERE id = ?;", (album_id,))
+    album = cur.fetchone()
+    conn.close()
+
+    if not album:
+        return 'Album not found', 404
+
+    return render_template('admin_edit_album.html', album=album)
+
+
+@app.route('/admin/album/<int:album_id>/delete', methods=['POST'])
+def admin_delete_album(album_id):
+    if not admin_required():
+        return redirect(url_for('albums'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+
+    # remove related rows first
+    cur.execute('DELETE FROM album_artists WHERE album_id = ?;', (album_id,))
+    cur.execute('DELETE FROM album_genres WHERE album_id = ?;', (album_id,))
+    cur.execute('DELETE FROM list_albums WHERE album_id = ?;', (album_id,))
+    cur.execute('DELETE FROM logs WHERE album_id = ?;', (album_id,))
+    cur.execute('DELETE FROM albums WHERE id = ?;', (album_id,))
+
+    conn.commit()
+    conn.close()
+
+    session['success'] = '✅ Album deleted.'
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
+def admin_delete_user(user_id):
+    if not admin_required():
+        return redirect(url_for('albums'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+
+    # delete logs
+    cur.execute('DELETE FROM logs WHERE user_id = ?;', (user_id,))
+
+    # delete lists and their list_albums
+    cur.execute('SELECT id FROM lists WHERE user_id = ?;', (user_id,))
+    lists = cur.fetchall()
+    for l in lists:
+        cur.execute('DELETE FROM list_albums WHERE list_id = ?;', (l['id'],))
+    cur.execute('DELETE FROM lists WHERE user_id = ?;', (user_id,))
+
+    # delete follows
+    cur.execute('DELETE FROM user_follows WHERE follower_id = ? OR following_id = ?;', (user_id, user_id))
+
+    # finally delete user
+    cur.execute('DELETE FROM users WHERE id = ?;', (user_id,))
+
+    conn.commit()
+    conn.close()
+
+    session['success'] = '✅ User and related data deleted.'
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/admin/user/<int:user_id>/delete_logs', methods=['POST'])
+def admin_delete_user_logs(user_id):
+    if not admin_required():
+        return redirect(url_for('albums'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM logs WHERE user_id = ?;', (user_id,))
+    conn.commit()
+    conn.close()
+
+    session['success'] = '✅ User logs deleted.'
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/admin/log/<int:log_id>/delete', methods=['POST'])
+def admin_delete_log(log_id):
+    if not admin_required():
+        return redirect(url_for('albums'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM logs WHERE id = ?;', (log_id,))
+    conn.commit()
+    conn.close()
+
+    session['success'] = '✅ Log deleted.'
+    return redirect(request.referrer or url_for('admin_dashboard'))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h3>Edit Album</h3>
+        <form method="POST" action="{{ url_for('admin_edit_album', album_id=album['id']) }}">
+            <div class="mb-3">
+                <label class="form-label">Title</label>
+                <input class="form-control" name="title" value="{{ album['title'] }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Release Year</label>
+                <input class="form-control" name="release_year" value="{{ album['release_year'] or '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Cover Image (static path)</label>
+                <input class="form-control" name="cover_image" value="{{ album['cover_image'] or '' }}">
+                <div class="form-text">Example: albumCovers/example.jpg or styles.css</div>
+            </div>
+
+            <button class="btn btn-primary" type="submit">Save</button>
+            <a class="btn btn-secondary" href="{{ url_for('admin_dashboard') }}">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
