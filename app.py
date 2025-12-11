@@ -1061,6 +1061,7 @@ def admin_delete_log(log_id):
     return redirect(request.referrer or url_for('admin_dashboard'))
 
 
+
 @app.route('/admin/album/create', methods=['GET', 'POST'])
 def admin_create_album():
     if not admin_required():
@@ -1073,8 +1074,8 @@ def admin_create_album():
         title = request.form.get('title', '').strip()
         release_year = request.form.get('release_year')
         cover_image = request.form.get('cover_image', '').strip()
-        artist_names = request.form.get('artists', '').strip()  
-        genre_ids = request.form.getlist('genres') 
+        artist_names = request.form.get('artists', '').strip()  # Comma-separated artist names
+        genre_ids = request.form.getlist('genres')    # Multiple genres
 
         if not title:
             session['error'] = 'Album title is required.'
@@ -1098,12 +1099,23 @@ def admin_create_album():
 
         album_id = cur.lastrowid
 
-        for artist_id in artist_ids:
-            if artist_id:
+        if artist_names:
+            artists_list = [name.strip() for name in artist_names.split(',') if name.strip()]
+            
+            for artist_name in artists_list:
+                cur.execute("SELECT id FROM artists WHERE name = ?;", (artist_name,))
+                existing_artist = cur.fetchone()
+                
+                if existing_artist:
+                    artist_id = existing_artist['id']
+                else:
+                    cur.execute("INSERT INTO artists (name) VALUES (?);", (artist_name,))
+                    artist_id = cur.lastrowid
+                
                 cur.execute("""
                     INSERT INTO album_artists (album_id, artist_id)
                     VALUES (?, ?);
-                """, (album_id, int(artist_id)))
+                """, (album_id, artist_id))
 
         for genre_id in genre_ids:
             if genre_id:
@@ -1118,15 +1130,12 @@ def admin_create_album():
         session['success'] = '✅ Album created successfully!'
         return redirect(url_for('admin_dashboard'))
 
-    cur.execute("SELECT id, name FROM artists ORDER BY name ASC;")
-    artists = cur.fetchall()
-    
     cur.execute("SELECT id, name FROM genres ORDER BY name ASC;")
     genres = cur.fetchall()
     
     conn.close()
 
-    return render_template('admin_create_album.html', artists=artists, genres=genres)
+    return render_template('admin_create_album.html', genres=genres)
 
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=5000)
