@@ -895,8 +895,8 @@ def admin_edit_album(album_id):
         title = request.form.get('title', '').strip()
         release_year = request.form.get('release_year')
         cover_image = request.form.get('cover_image', '').strip()
-        artist_names = request.form.get('artists', '').strip()  # Comma-separated artist names
-        genre_ids = request.form.getlist('genres')  # Multiple genres
+        artist_names = request.form.get('artists', '').strip() 
+        genre_ids = request.form.getlist('genres')
 
         try:
             if release_year == '':
@@ -906,39 +906,31 @@ def admin_edit_album(album_id):
         except:
             release_year_val = None
 
-        # Update the album
         cur.execute("UPDATE albums SET title = ?, release_year = ?, cover_image = ? WHERE id = ?;",
                     (title, release_year_val, cover_image if cover_image else None, album_id))
 
-        # Delete existing artist associations
         cur.execute('DELETE FROM album_artists WHERE album_id = ?;', (album_id,))
 
-        # Add new artist associations
         if artist_names:
             artists_list = [name.strip() for name in artist_names.split(',') if name.strip()]
             
             for artist_name in artists_list:
-                # Check if artist exists
                 cur.execute("SELECT id FROM artists WHERE name = ?;", (artist_name,))
                 existing_artist = cur.fetchone()
                 
                 if existing_artist:
                     artist_id = existing_artist['id']
                 else:
-                    # Create new artist
                     cur.execute("INSERT INTO artists (name) VALUES (?);", (artist_name,))
                     artist_id = cur.lastrowid
                 
-                # Link artist to album
                 cur.execute("""
                     INSERT INTO album_artists (album_id, artist_id)
                     VALUES (?, ?);
                 """, (album_id, artist_id))
 
-        # Delete existing genre associations
         cur.execute('DELETE FROM album_genres WHERE album_id = ?;', (album_id,))
 
-        # Add new genre associations
         for genre_id in genre_ids:
             if genre_id:
                 cur.execute("""
@@ -951,7 +943,6 @@ def admin_edit_album(album_id):
         session['success'] = '✅ Album updated.'
         return redirect(url_for('admin_dashboard'))
 
-    # GET request - fetch album, current artists, current genres, and all genres
     cur.execute("SELECT * FROM albums WHERE id = ?;", (album_id,))
     album = cur.fetchone()
 
@@ -959,7 +950,6 @@ def admin_edit_album(album_id):
         conn.close()
         return 'Album not found', 404
 
-    # Get current artists for this album
     cur.execute("""
         SELECT ar.name
         FROM artists ar
@@ -969,7 +959,6 @@ def admin_edit_album(album_id):
     current_artists = cur.fetchall()
     current_artists_str = ', '.join([a['name'] for a in current_artists])
 
-    # Get current genres for this album
     cur.execute("""
         SELECT g.id
         FROM genres g
@@ -978,7 +967,6 @@ def admin_edit_album(album_id):
     """, (album_id,))
     current_genre_ids = [g['id'] for g in cur.fetchall()]
 
-    # Get all genres for the dropdown
     cur.execute("SELECT id, name FROM genres ORDER BY name ASC;")
     all_genres = cur.fetchall()
 
@@ -999,7 +987,6 @@ def admin_delete_album(album_id):
     conn = connect_db()
     cur = conn.cursor()
 
-    # remove related rows first
     cur.execute('DELETE FROM album_artists WHERE album_id = ?;', (album_id,))
     cur.execute('DELETE FROM album_genres WHERE album_id = ?;', (album_id,))
     cur.execute('DELETE FROM list_albums WHERE album_id = ?;', (album_id,))
@@ -1086,12 +1073,11 @@ def admin_create_album():
         title = request.form.get('title', '').strip()
         release_year = request.form.get('release_year')
         cover_image = request.form.get('cover_image', '').strip()
-        artist_names = request.form.get('artists', '').strip()  # Comma-separated artist names
-        genre_ids = request.form.getlist('genres')    # Multiple genres
+        artist_names = request.form.get('artists', '').strip()  
+        genre_ids = request.form.getlist('genres') 
 
         if not title:
             session['error'] = 'Album title is required.'
-            # Fetch genres for the form
             cur.execute("SELECT id, name FROM genres ORDER BY name ASC;")
             genres = cur.fetchall()
             conn.close()
@@ -1105,7 +1091,6 @@ def admin_create_album():
         except:
             release_year_val = None
 
-        # Insert the album
         cur.execute("""
             INSERT INTO albums (title, release_year, cover_image)
             VALUES (?, ?, ?);
@@ -1113,7 +1098,6 @@ def admin_create_album():
 
         album_id = cur.lastrowid
 
-        # Insert artist associations
         for artist_id in artist_ids:
             if artist_id:
                 cur.execute("""
@@ -1121,7 +1105,6 @@ def admin_create_album():
                     VALUES (?, ?);
                 """, (album_id, int(artist_id)))
 
-        # Insert genre associations
         for genre_id in genre_ids:
             if genre_id:
                 cur.execute("""
@@ -1135,7 +1118,6 @@ def admin_create_album():
         session['success'] = '✅ Album created successfully!'
         return redirect(url_for('admin_dashboard'))
 
-    # GET request - fetch artists and genres for the form
     cur.execute("SELECT id, name FROM artists ORDER BY name ASC;")
     artists = cur.fetchall()
     
