@@ -360,12 +360,37 @@ def search():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT id, title, release_year, cover_image
-        FROM albums
-        WHERE title LIKE ?
-        ORDER BY release_year DESC;
+        SELECT DISTINCT a.id, a.title, a.release_year, a.cover_image
+        FROM albums a
+        WHERE a.title LIKE ?
+        ORDER BY a.release_year DESC;
     """, (f"%{term}%",))
-    album_results = cur.fetchall()
+    album_title_matches = cur.fetchall()
+
+    cur.execute("""
+        SELECT id
+        FROM artists
+        WHERE name LIKE ?;
+    """, (f"%{term}%",))
+    matched_artists = cur.fetchall()
+
+    artist_album_matches = []
+    if matched_artists:
+        artist_ids = tuple(a["id"] for a in matched_artists)
+
+        cur.execute(f"""
+            SELECT DISTINCT a.id, a.title, a.release_year, a.cover_image
+            FROM albums a
+            JOIN album_artists aa ON a.id = aa.album_id
+            WHERE aa.artist_id IN ({','.join(['?']*len(artist_ids))})
+            ORDER BY a.release_year DESC;
+        """, artist_ids)
+
+        artist_album_matches = cur.fetchall()
+
+    all_albums = {a["id"]: a for a in album_title_matches}
+    for a in artist_album_matches:
+        all_albums[a["id"]] = a
 
     cur.execute("""
         SELECT id, username, user_bio
@@ -379,7 +404,7 @@ def search():
 
     return render_template(
         "search_results.html",
-        albums=album_results,
+        albums=list(all_albums.values()),
         users=user_results,
         search_term=term
     )

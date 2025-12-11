@@ -54,7 +54,7 @@
 
         <form class="d-flex me-3" method="POST" action="{{ url_for('search') }}">
             <input class="form-control me-2" type="search" name="term"
-                   placeholder="Search albums or users..." required>
+                   placeholder="Search albums/users/artists" required>
             <button class="btn btn-outline-light" type="submit">Search</button>
         </form>
 
@@ -63,7 +63,7 @@
             {% if session.get("user_id") %}
                 <li class="nav-item">
                     <span class="navbar-text me-3 text-light">
-                        Hi, {{ session["username"] }} 👋
+                        Hi, {{ session["username"] }}
                     </span>
                 </li>
 
