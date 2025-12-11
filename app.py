@@ -895,6 +895,8 @@ def admin_edit_album(album_id):
         title = request.form.get('title', '').strip()
         release_year = request.form.get('release_year')
         cover_image = request.form.get('cover_image', '').strip()
+        artist_names = request.form.get('artists', '').strip()  # Comma-separated artist names
+        genre_ids = request.form.getlist('genres')  # Multiple genres
 
         try:
             if release_year == '':
@@ -904,21 +906,89 @@ def admin_edit_album(album_id):
         except:
             release_year_val = None
 
+        # Update the album
         cur.execute("UPDATE albums SET title = ?, release_year = ?, cover_image = ? WHERE id = ?;",
                     (title, release_year_val, cover_image if cover_image else None, album_id))
+
+        # Delete existing artist associations
+        cur.execute('DELETE FROM album_artists WHERE album_id = ?;', (album_id,))
+
+        # Add new artist associations
+        if artist_names:
+            artists_list = [name.strip() for name in artist_names.split(',') if name.strip()]
+            
+            for artist_name in artists_list:
+                # Check if artist exists
+                cur.execute("SELECT id FROM artists WHERE name = ?;", (artist_name,))
+                existing_artist = cur.fetchone()
+                
+                if existing_artist:
+                    artist_id = existing_artist['id']
+                else:
+                    # Create new artist
+                    cur.execute("INSERT INTO artists (name) VALUES (?);", (artist_name,))
+                    artist_id = cur.lastrowid
+                
+                # Link artist to album
+                cur.execute("""
+                    INSERT INTO album_artists (album_id, artist_id)
+                    VALUES (?, ?);
+                """, (album_id, artist_id))
+
+        # Delete existing genre associations
+        cur.execute('DELETE FROM album_genres WHERE album_id = ?;', (album_id,))
+
+        # Add new genre associations
+        for genre_id in genre_ids:
+            if genre_id:
+                cur.execute("""
+                    INSERT INTO album_genres (album_id, genre_id)
+                    VALUES (?, ?);
+                """, (album_id, int(genre_id)))
+
         conn.commit()
         conn.close()
         session['success'] = '✅ Album updated.'
         return redirect(url_for('admin_dashboard'))
 
+    # GET request - fetch album, current artists, current genres, and all genres
     cur.execute("SELECT * FROM albums WHERE id = ?;", (album_id,))
     album = cur.fetchone()
-    conn.close()
 
     if not album:
+        conn.close()
         return 'Album not found', 404
 
-    return render_template('admin_edit_album.html', album=album)
+    # Get current artists for this album
+    cur.execute("""
+        SELECT ar.name
+        FROM artists ar
+        JOIN album_artists aa ON ar.id = aa.artist_id
+        WHERE aa.album_id = ?;
+    """, (album_id,))
+    current_artists = cur.fetchall()
+    current_artists_str = ', '.join([a['name'] for a in current_artists])
+
+    # Get current genres for this album
+    cur.execute("""
+        SELECT g.id
+        FROM genres g
+        JOIN album_genres ag ON g.id = ag.genre_id
+        WHERE ag.album_id = ?;
+    """, (album_id,))
+    current_genre_ids = [g['id'] for g in cur.fetchall()]
+
+    # Get all genres for the dropdown
+    cur.execute("SELECT id, name FROM genres ORDER BY name ASC;")
+    all_genres = cur.fetchall()
+
+    conn.close()
+
+    return render_template('admin_edit_album.html', 
+                         album=album, 
+                         current_artists=current_artists_str,
+                         current_genre_ids=current_genre_ids,
+                         all_genres=all_genres)
 
 
 @app.route('/admin/album/<int:album_id>/delete', methods=['POST'])
@@ -1003,6 +1073,78 @@ def admin_delete_log(log_id):
     session['success'] = '✅ Log deleted.'
     return redirect(request.referrer or url_for('admin_dashboard'))
 
+
+@app.route('/admin/album/create', methods=['GET', 'POST'])
+def admin_create_album():
+    if not admin_required():
+        return redirect(url_for('albums'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        release_year = request.form.get('release_year')
+        cover_image = request.form.get('cover_image', '').strip()
+        artist_names = request.form.get('artists', '').strip()  # Comma-separated artist names
+        genre_ids = request.form.getlist('genres')    # Multiple genres
+
+        if not title:
+            session['error'] = 'Album title is required.'
+            # Fetch genres for the form
+            cur.execute("SELECT id, name FROM genres ORDER BY name ASC;")
+            genres = cur.fetchall()
+            conn.close()
+            return render_template('admin_create_album.html', genres=genres)
+
+        try:
+            if release_year == '':
+                release_year_val = None
+            else:
+                release_year_val = int(release_year)
+        except:
+            release_year_val = None
+
+        # Insert the album
+        cur.execute("""
+            INSERT INTO albums (title, release_year, cover_image)
+            VALUES (?, ?, ?);
+        """, (title, release_year_val, cover_image if cover_image else None))
+
+        album_id = cur.lastrowid
+
+        # Insert artist associations
+        for artist_id in artist_ids:
+            if artist_id:
+                cur.execute("""
+                    INSERT INTO album_artists (album_id, artist_id)
+                    VALUES (?, ?);
+                """, (album_id, int(artist_id)))
+
+        # Insert genre associations
+        for genre_id in genre_ids:
+            if genre_id:
+                cur.execute("""
+                    INSERT INTO album_genres (album_id, genre_id)
+                    VALUES (?, ?);
+                """, (album_id, int(genre_id)))
+
+        conn.commit()
+        conn.close()
+
+        session['success'] = '✅ Album created successfully!'
+        return redirect(url_for('admin_dashboard'))
+
+    # GET request - fetch artists and genres for the form
+    cur.execute("SELECT id, name FROM artists ORDER BY name ASC;")
+    artists = cur.fetchall()
+    
+    cur.execute("SELECT id, name FROM genres ORDER BY name ASC;")
+    genres = cur.fetchall()
+    
+    conn.close()
+
+    return render_template('admin_create_album.html', artists=artists, genres=genres)
 
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=5000)
